@@ -10,5 +10,6 @@ function getEnvVariable(key: string, required: boolean = false): string | undefi
 
 export default {
 	TOKEN: getEnvVariable("TOKEN", true),
-	COMMANDS_PATH: getEnvVariable("COMMANDS_PATH") || join(process.cwd(), "/dist/commands")
+	COMMANDS_PATH: getEnvVariable("COMMANDS_PATH") || join(process.cwd(), "/dist/commands"),
+	EVENTS_PATH: getEnvVariable("EVENTS_PATH") || join(process.cwd(), "/dist/events")
 };
