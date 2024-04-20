@@ -4,7 +4,7 @@ import { Event } from "../../types/Registry/Event";
 import { Logger } from "../Logger";
 import { HookableRegistry } from "./HookableRegistry";
 import { existsSync, readdirSync, statSync } from "fs";
-import { InvalidEventPathError, InvalidEventsPathError } from "../Errors/EventRegistry";
+import { DuplicateEventError, InvalidEventPathError, InvalidEventsPathError } from "../Errors/EventRegistry";
 import { MalformedEventError } from "../Errors/EventRegistry/";
 import { ExtendedClient } from "../ExtendedClient";
 import { join } from "path";
@@ -31,7 +31,7 @@ export class EventRegistry extends HookableRegistry {
 					this.registerEvent(eventPath);
 					registeredEventsCount += 1;
 				} catch(error) {
-					this.logger.error(formatUnwrappedError(unwrapError(error)));
+					this.logger.error(formatUnwrappedError(unwrapError(error), false));
 				}
 			}
 		}
@@ -88,15 +88,19 @@ export class EventRegistry extends HookableRegistry {
 		const event = EventRegistry.importEvent(path);
 		const eventName = event.name;
 
-		this.nameHookableMappings.set(eventName, event);
-		this.pathNameMappings.set(path, eventName);
-
-		if(!event.once) {
-			this.client.on(eventName, event.execute);
+		if(this.getHookableByName(eventName) !== undefined) {
+			throw new DuplicateEventError(path);
 		} else {
-			this.client.once(eventName, event.execute);
+			this.nameHookableMappings.set(eventName, event);
+			this.pathNameMappings.set(path, eventName);
+	
+			if(!event.once) {
+				this.client.on(eventName, event.execute);
+			} else {
+				this.client.once(eventName, event.execute);
+			}
+	
+			return event;
 		}
-
-		return event;
 	}
 }
