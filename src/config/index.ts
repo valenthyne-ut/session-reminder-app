@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { MissingConfigPropertyError } from "../classes/Errors/Config";
+import { join } from "path";
 
 function getEnvVariable(key: string, required: boolean = false): string | undefined {
 	const value = process.env[key];
@@ -8,5 +9,6 @@ function getEnvVariable(key: string, required: boolean = false): string | undefi
 }
 
 export default {
-	TOKEN: getEnvVariable("TOKEN", true)
+	TOKEN: getEnvVariable("TOKEN", true),
+	COMMANDS_PATH: getEnvVariable("COMMANDS_PATH") || join(process.cwd(), "/dist/commands")
 };
