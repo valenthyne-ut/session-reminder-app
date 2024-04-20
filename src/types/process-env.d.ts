@@ -5,7 +5,8 @@ declare global {
 		interface ProcessEnv {
 			[key: string]: string | undefined;
 			TOKEN: string;
-			PUSH_COMMANDS: string;
+			COMMANDS_PATH: string | undefined;
+			EVENTS_PATH: string | undefined;
 		}
 	}
 }
