@@ -37,8 +37,7 @@ export class EventRegistry extends HookableRegistry {
 		}
 
 		if(this.getHookableByName("interactionCreate") === undefined) {
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			this.client.on("interactionCreate", this.defaultInteractionHookImplementation);
+			this.client.on("interactionCreate", this.defaultInteractionHookImplementation.bind(this));
 		}
 
 		this.logger.info(`Registered ${yellow(registeredEventsCount)} event(s) in total.`);

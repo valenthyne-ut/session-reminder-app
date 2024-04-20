@@ -8,8 +8,15 @@ function getEnvVariable(key: string, required: boolean = false): string | undefi
 	return value;
 }
 
+function getDeployCommands(): boolean {
+	const deployCommands = getEnvVariable("DEPLOY_COMMANDS");
+	if(deployCommands && deployCommands === "true") { return true; }
+	return false;
+}
+
 export default {
 	TOKEN: getEnvVariable("TOKEN", true),
 	COMMANDS_PATH: getEnvVariable("COMMANDS_PATH") || join(process.cwd(), "/dist/commands"),
-	EVENTS_PATH: getEnvVariable("EVENTS_PATH") || join(process.cwd(), "/dist/events")
+	EVENTS_PATH: getEnvVariable("EVENTS_PATH") || join(process.cwd(), "/dist/events"),
+	DEPLOY_COMMANDS: getDeployCommands()
 };

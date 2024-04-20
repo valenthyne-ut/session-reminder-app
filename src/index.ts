@@ -3,7 +3,9 @@ import config from "./config";
 
 void (async () => {
 	const client = new ExtendedClient({ 
-		intents: [], 
+		intents: [
+			"Guilds"
+		], 
 		commandsPath: config.COMMANDS_PATH,
 		eventsPath: config.EVENTS_PATH
 	});

@@ -7,6 +7,7 @@ declare global {
 			TOKEN: string;
 			COMMANDS_PATH: string | undefined;
 			EVENTS_PATH: string | undefined;
+			DEPLOY_COMMANDS: string | undefined;
 		}
 	}
 }
