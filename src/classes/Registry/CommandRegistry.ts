@@ -3,7 +3,7 @@ import { existsSync, readdirSync, statSync } from "fs";
 import { Command } from "../../types/Registry/Command";
 import { Logger } from "../Logger";
 import { HookableRegistry } from "./HookableRegistry";
-import { InvalidCommandPathError, InvalidCommandsPathError, MalformedCommandError } from "../Errors/CommandRegistry";
+import { DuplicateCommandError, InvalidCommandPathError, InvalidCommandsPathError, MalformedCommandError } from "../Errors/CommandRegistry";
 import { join } from "path";
 import { yellow } from "chalk";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
@@ -68,7 +68,7 @@ export class CommandRegistry extends HookableRegistry {
 						this.registerCommand(commandPath);
 						registeredCommandsCount += 1;
 					} catch(error) {
-						this.logger.error(formatUnwrappedError(unwrapError(error)));
+						this.logger.error(formatUnwrappedError(unwrapError(error), false));
 					}
 				}
 				if(this.verbose) {
@@ -110,9 +110,12 @@ export class CommandRegistry extends HookableRegistry {
 		const command = CommandRegistry.importCommand(path);
 		const commandName = command.data.name;
 
-		this.nameHookableMappings.set(commandName, command);
-		this.pathNameMappings.set(path, commandName);
-
-		return command;
+		if(this.getHookableByName(commandName) !== undefined) { 
+			throw new DuplicateCommandError(path);
+		} else {
+			this.nameHookableMappings.set(commandName, command);
+			this.pathNameMappings.set(path, commandName);
+			return command;
+		}
 	}
 }
