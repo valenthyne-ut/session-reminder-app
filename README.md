@@ -1,2 +1,2 @@
-# artieficer
-A collection of utilities to effortlessly get a Discord bot running without boilerplate, using discord.js and Typescript.
+# session-reminder-app
+A fairly simple bot made to remind me and a campaign of friends of upcoming sessions.
