@@ -20,12 +20,14 @@ export class CommandRegistry extends HookableRegistry {
 		}
 
 		const candidateCommands: Array<CandidateCommand> = [];
-		function pushCandidate(filename: string, path: string) {
-			if(!filename.endsWith(COMMAND_FILE_EXTENSION)) { return; };
-			
+		function pushCandidate(filename: string, path: string, hierarchical: boolean) {
+			if(!filename.endsWith(COMMAND_FILE_EXTENSION)) { return; }
+			if(candidateCommands.find(candidate => candidate.path === path)) { return; }
+
 			candidateCommands.push({
 				filename: filename,
-				path: path
+				path: path,
+				hierarchical: hierarchical
 			});
 		}
 
@@ -33,19 +35,28 @@ export class CommandRegistry extends HookableRegistry {
 		for(const itemName of commandsPathItems) {
 			const itemPath = join(commandsPath, itemName);
 			if(statSync(itemPath).isDirectory()) {
-				const groupPathContents = readdirSync(itemPath);
-				for(const groupItemName of groupPathContents) {
-					const groupItemPath = join(itemPath, groupItemName);
-					if(statSync(groupItemPath).isFile()) { pushCandidate(groupItemName, groupItemPath); }
+				const itemNameWithExtension = itemName + COMMAND_FILE_EXTENSION;
+				const isHierarchicalSubcommandFolder = commandsPathItems.includes(itemNameWithExtension);
+				if(isHierarchicalSubcommandFolder) {
+					pushCandidate(itemNameWithExtension, itemPath + COMMAND_FILE_EXTENSION, true);
+				} else {
+					const groupPathContents = readdirSync(itemPath);
+					for(const groupItemName of groupPathContents) {
+						const groupItemPath = join(itemPath, groupItemName);
+						if(statSync(groupItemPath).isFile()) { pushCandidate(groupItemName, groupItemPath, false); }
+					}
 				}
 			} else {
-				pushCandidate(itemName, itemPath);
+				const itemNameWithoutExtension = itemName.replace(COMMAND_FILE_EXTENSION, "");
+				const isHierarchicalCommandFile = commandsPathItems.includes(itemNameWithoutExtension);
+				pushCandidate(itemName, itemPath, isHierarchicalCommandFile);
 			}
 		}
 
 		let registeredCount = 0;
 		for(const candidate of candidateCommands) { 
-			const { filename, path } = candidate;
+			const { filename, path, hierarchical } = candidate;
+			if(hierarchical) { continue; }
 			try {
 				this.registerCommand(path);
 				registeredCount++;
