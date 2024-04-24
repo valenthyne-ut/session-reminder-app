@@ -7,9 +7,9 @@ import { DuplicateCommandError, InvalidCommandPathError, InvalidCommandsPathErro
 import { join } from "path";
 import { yellow } from "chalk";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
+import { CandidateCommand } from "../../types/Registry/CandidateCommand";
 
 const COMMAND_FILE_EXTENSION = ".js";
-const UNCATEGORIZED_CATEGORY_NAME = "uncategorized";
 
 export class CommandRegistry extends HookableRegistry {
 	constructor(commandsPath: string, logger?: Logger, verbose?: boolean) {
@@ -19,69 +19,42 @@ export class CommandRegistry extends HookableRegistry {
 			throw new InvalidCommandsPathError(commandsPath);
 		}
 
-		const commandCandidateMap: Map<string, Array<string>> = new Map();
-		
-		function pushToMap(category: string, path: string) {
-			const categoryPaths = commandCandidateMap.get(category);
-			if(categoryPaths) {
-				categoryPaths.push(path);
-				commandCandidateMap.set(category, categoryPaths);
-			} else {
-				commandCandidateMap.set(category, [path]);
-			}
+		const candidateCommands: Array<CandidateCommand> = [];
+		function pushCandidate(filename: string, path: string) {
+			if(!filename.endsWith(COMMAND_FILE_EXTENSION)) { return; };
+			
+			candidateCommands.push({
+				filename: filename,
+				path: path
+			});
 		}
 
-		/*
-		* Read the commands directory and look for candidates.
-		* Currently supports commands that are categorized (commands in a named directory) 
-		* and uncategorized (files sitting in the commands path).
-		* 
-		* Future version of the constructor will support subcommands.
-		*/
 		const commandsPathItems = readdirSync(commandsPath);
 		for(const itemName of commandsPathItems) {
 			const itemPath = join(commandsPath, itemName);
 			if(statSync(itemPath).isDirectory()) {
-				const categoryContents = readdirSync(itemPath);
-				for(const categoryItem of categoryContents) {
-					const categoryItemPath = join(itemPath, categoryItem);
-					// Ignore all further directories and only add files as candidates.
-					if(statSync(categoryItemPath).isFile() && categoryItemPath.endsWith(COMMAND_FILE_EXTENSION)) {
-						pushToMap(itemName, categoryItemPath);
-					}
+				const groupPathContents = readdirSync(itemPath);
+				for(const groupItemName of groupPathContents) {
+					const groupItemPath = join(itemPath, groupItemName);
+					if(statSync(groupItemPath).isFile()) { pushCandidate(groupItemName, groupItemPath); }
 				}
 			} else {
-				if(itemPath.endsWith(COMMAND_FILE_EXTENSION)) {
-					pushToMap(UNCATEGORIZED_CATEGORY_NAME, itemPath);
-				}
+				pushCandidate(itemName, itemPath);
 			}
 		}
 
-		if(this.verbose) { this.logger.info(`Found ${yellow(commandCandidateMap.size)} command candidates.`); }
-		
-		let registeredCommandsCount = 0;
-		for(const category of commandCandidateMap.keys()) {
-			const categoryCommands = commandCandidateMap.get(category);
-			if(categoryCommands) {
-				for(const commandPath of categoryCommands) {
-					try {
-						this.registerCommand(commandPath);
-						registeredCommandsCount += 1;
-					} catch(error) {
-						this.logger.error(formatUnwrappedError(unwrapError(error), false));
-					}
-				}
-				if(this.verbose) {
-					if(category == UNCATEGORIZED_CATEGORY_NAME) {
-						this.logger.info(`Registered ${yellow(categoryCommands.length)} uncategorized commands(s).`);
-					} else {
-						this.logger.info(`Registered ${yellow(categoryCommands.length)} command(s) from category ${yellow(category)}.`);
-					}
-				}
+		let registeredCount = 0;
+		for(const candidate of candidateCommands) { 
+			const { filename, path } = candidate;
+			try {
+				this.registerCommand(path);
+				registeredCount++;
+			} catch(error) {
+				this.logger.error(formatUnwrappedError(unwrapError(error)), false);
 			}
 		}
 
-		this.logger.info(`Registered ${yellow(registeredCommandsCount)} commands in total.`);
+		this.logger.info(`Registered ${yellow(registeredCount)} command(s) in total.`);
 	}
 	
 	public static importCommand(path: string): Command {
