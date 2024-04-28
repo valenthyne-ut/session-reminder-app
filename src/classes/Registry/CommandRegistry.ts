@@ -8,6 +8,8 @@ import { join } from "path";
 import { yellow } from "chalk";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { CandidateCommand } from "../../types/Registry/CandidateCommand";
+import { HierarchicalCommand } from "../../types/Registry/HierarchicalCommand";
+import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from "discord.js";
 
 const COMMAND_FILE_EXTENSION = ".js";
 
@@ -55,10 +57,9 @@ export class CommandRegistry extends HookableRegistry {
 
 		let registeredCount = 0;
 		for(const candidate of candidateCommands) { 
-			const { filename, path, hierarchical } = candidate;
-			if(hierarchical) { continue; }
+			const { path, hierarchical } = candidate;
 			try {
-				this.registerCommand(path);
+				this.registerCommand(path, hierarchical);
 				registeredCount++;
 			} catch(error) {
 				this.logger.error(formatUnwrappedError(unwrapError(error)), false);
@@ -68,31 +69,53 @@ export class CommandRegistry extends HookableRegistry {
 		this.logger.info(`Registered ${yellow(registeredCount)} command(s) in total.`);
 	}
 	
-	public static importCommand(path: string): Command {
+	public static importCommand(path: string, hierarchical: boolean): Command {
 		const command = require(path) as Command;
-		if(command.data === undefined || command.guilds == undefined || command.execute === undefined) {
+		if(command.data === undefined || (command.guilds === undefined && !hierarchical) || (command.execute === undefined && !hierarchical)) {
 			throw new MalformedCommandError(path);
 		}
 		return command;
 	}
 
-	public override getHookables(): Array<Command> {
-		return super.getHookables() as Array<Command>;
+	public override getHookables(): Array<Command | Array<Command>> {
+		return super.getHookables() as Array<Command | Array<Command>>;
 	}
 
-	public override getHookableByName(name: string): Command | undefined {
-		return super.getHookableByName(name) as Command | undefined;
+	public override getHookableByName(name: string): Command | Array<Command> | undefined {
+		return super.getHookableByName(name) as Command | Array<Command> | undefined;
 	}
 
-	public override getHookableByPath(path: string): Command | undefined {
-		return super.getHookableByPath(path) as Command | undefined;	
+	public override getHookableByPath(path: string): Command | Array<Command> | undefined {
+		return super.getHookableByPath(path) as Command | Array<Command> | undefined;	
 	}
 
-	public registerCommand(path: string): Command {
+	public registerCommand(path: string, hierarchical: boolean): Command | Array<Command> {
 		if(!existsSync(path) || statSync(path).isDirectory()) { throw new InvalidCommandPathError(path); }
 
-		const command = CommandRegistry.importCommand(path);
-		const commandName = command.data.name;
+		let command: Command | Array<Command> | undefined;
+		let commandName: string | undefined;
+
+		if(hierarchical) {
+			const hierarchicalCommand = CommandRegistry.importCommand(path, true) as HierarchicalCommand;
+			commandName = hierarchicalCommand.data.name;
+			
+			if(hierarchicalCommand.execute) {
+				command = hierarchicalCommand as Command;
+			} else {
+				command = [hierarchicalCommand as Command];
+				const subcommandDirPath = path.replace(COMMAND_FILE_EXTENSION, "");
+				const subcommandDirContents = readdirSync(subcommandDirPath);
+				for(const subcommandName of subcommandDirContents) {
+					const subcommandPath = join(subcommandDirPath, subcommandName);
+					const subcommand = CommandRegistry.importCommand(subcommandPath, true);
+					(command[0].data as SlashCommandBuilder).addSubcommand(subcommand.data as SlashCommandSubcommandBuilder);
+					command.push(CommandRegistry.importCommand(subcommandPath, true));
+				}
+			}
+		} else {
+			command = CommandRegistry.importCommand(path, false);
+			commandName = command.data.name;
+		}
 
 		if(this.getHookableByName(commandName) !== undefined) { 
 			throw new DuplicateCommandError(path);

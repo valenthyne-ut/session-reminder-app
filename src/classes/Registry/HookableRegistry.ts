@@ -2,7 +2,7 @@ import { Hookable } from "../../types/Registry";
 import { Logger } from "../Logger";
 
 export abstract class HookableRegistry {
-	protected readonly nameHookableMappings: Map<string, Hookable>;
+	protected readonly nameHookableMappings: Map<string, Hookable | Array<Hookable>>;
 	protected readonly pathNameMappings: Map<string, string>;
 
 	public readonly logger: Logger;
@@ -16,15 +16,15 @@ export abstract class HookableRegistry {
 		this.verbose = verbose;
 	}
 
-	public getHookables(): Array<Hookable> {
+	public getHookables(): Array<Hookable | Array<Hookable>> {
 		return Array.from(this.nameHookableMappings.values());
 	}
 
-	public getHookableByName(name: string): Hookable | undefined {
+	public getHookableByName(name: string): Hookable | Array<Hookable> | undefined {
 		return this.nameHookableMappings.get(name);		
 	}
 
-	public getHookableByPath(path: string): Hookable | undefined {
+	public getHookableByPath(path: string): Hookable | Array<Hookable> | undefined {
 		const name = this.pathNameMappings.get(path);
 		if(name) { return this.nameHookableMappings.get(name); } 
 		return undefined;

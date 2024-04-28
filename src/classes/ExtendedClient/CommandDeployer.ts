@@ -17,7 +17,7 @@ export class CommandDeployer {
 		const userId = this.client.user?.id;
 
 		if(userId) {
-			const commands = this.client.commands.getHookables();
+			const commands = this.client.commands.getHookables().map(value => Array.isArray(value) ? value[0] : value);
 			const guildIds = this.client.guilds.cache.map(guild => guild.id);
 
 			for(const guildId of guildIds) {

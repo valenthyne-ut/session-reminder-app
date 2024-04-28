@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "disc
 
 export const data = new SlashCommandSubcommandBuilder()
 	.setName("hierarchical-subcommand-1")
-	.setDescription("A subcommand to test the CommandRegistry's capabilites of reading hierarchical command structures.");
+	.setDescription("A subcommand to test the registry.");
 
 export async function execute(interaction: ChatInputCommandInteraction) {
 	await interaction.reply("Hello world, from a subcommand!");

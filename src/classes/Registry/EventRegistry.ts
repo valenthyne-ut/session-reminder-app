@@ -50,11 +50,23 @@ export class EventRegistry extends HookableRegistry {
 			const commandName = commandInteraction.commandName;
 			const command = this.client.commands.getHookableByName(commandName);
 			if(command) {
-				try {
-					await command.execute(commandInteraction);
-				} catch(error) {
-					this.logger.error("Command execution failed.");
-					this.logger.error(formatUnwrappedError(unwrapError(error)));
+				if(Array.isArray(command)) {
+					if(commandInteraction.isChatInputCommand()) {
+						const subcommandName = commandInteraction.options.getSubcommand(true);
+						const subcommand = command.find(command => command.data.name === subcommandName);
+						if(subcommand) {
+							await subcommand.execute(commandInteraction);
+						} else {
+							this.logger.warning(`Missed subcommand execute from command name ${yellow(commandName)}, subcommand ${yellow(subcommandName)}.`);
+						}
+					}
+				} else {
+					try {
+						await command.execute(commandInteraction);
+					} catch(error) {
+						this.logger.error("Command execution failed.");
+						this.logger.error(formatUnwrappedError(unwrapError(error)));
+					}
 				}
 			} else {
 				this.logger.warning(`Missed command execute from command named ${yellow(commandName)}.`);
