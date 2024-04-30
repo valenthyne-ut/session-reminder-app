@@ -1,121 +1,122 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-import { existsSync, readdirSync, statSync } from "fs";
-import { Command } from "../../types/Registry/Command";
-import { Logger } from "../Logger";
-import { HookableRegistry } from "./HookableRegistry";
-import { DuplicateCommandError, InvalidCommandPathError, InvalidCommandsPathError, MalformedCommandError } from "../Errors/CommandRegistry";
-import { join } from "path";
 import { yellow } from "chalk";
+import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from "discord.js";
+import { existsSync, readdirSync, statSync } from "fs";
+import { join } from "path";
+import { Command, CommandRegistryEntry } from "../../types/Registry/Command";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
+import { InvalidCommandError, InvalidCommandsPathError, NoHierarchySubcommandsFoundError } from "../Errors/Registry/Command";
+import { Logger } from "../Logger";
+import { AbstractRegistry } from "./AbstractRegistry";
 
 const COMMAND_FILE_EXTENSION = ".js";
-const UNCATEGORIZED_CATEGORY_NAME = "uncategorized";
 
-export class CommandRegistry extends HookableRegistry {
-	constructor(commandsPath: string, logger?: Logger, verbose?: boolean) {
-		super(logger || new Logger("CommandRegistry"), verbose);
-		
-		if(!existsSync(commandsPath) || statSync(commandsPath).isFile()) {
-			throw new InvalidCommandsPathError(commandsPath);
+export class CommandRegistry extends AbstractRegistry<CommandRegistryEntry> {
+	private data: Map<string, CommandRegistryEntry>;
+
+	constructor(commandsPath: string, logger?: Logger) {
+		super(logger || new Logger("CommandRegistry"));
+		if(!existsSync(commandsPath) || !statSync(commandsPath).isDirectory()) { throw new InvalidCommandsPathError(commandsPath); }
+		this.data = new Map();
+
+		const candidates: Array<{ path: string, hierarchy: boolean }> = [];
+		function pushCandidate(path: string, hierarchy: boolean) {
+			if(!path.endsWith(COMMAND_FILE_EXTENSION)) { return; }
+			if(candidates.find(candidate => candidate.path === path)) { return; }
+
+			candidates.push({ path: path, hierarchy: hierarchy });
 		}
 
-		const commandCandidateMap: Map<string, Array<string>> = new Map();
-		
-		function pushToMap(category: string, path: string) {
-			const categoryPaths = commandCandidateMap.get(category);
-			if(categoryPaths) {
-				categoryPaths.push(path);
-				commandCandidateMap.set(category, categoryPaths);
-			} else {
-				commandCandidateMap.set(category, [path]);
-			}
-		}
-
-		/*
-		* Read the commands directory and look for candidates.
-		* Currently supports commands that are categorized (commands in a named directory) 
-		* and uncategorized (files sitting in the commands path).
-		* 
-		* Future version of the constructor will support subcommands.
-		*/
-		const commandsPathItems = readdirSync(commandsPath);
+		const commandsPathItems = readdirSync(commandsPath);	
 		for(const itemName of commandsPathItems) {
 			const itemPath = join(commandsPath, itemName);
-			if(statSync(itemPath).isDirectory()) {
-				const categoryContents = readdirSync(itemPath);
-				for(const categoryItem of categoryContents) {
-					const categoryItemPath = join(itemPath, categoryItem);
-					// Ignore all further directories and only add files as candidates.
-					if(statSync(categoryItemPath).isFile() && categoryItemPath.endsWith(COMMAND_FILE_EXTENSION)) {
-						pushToMap(itemName, categoryItemPath);
-					}
-				}
-			} else {
-				if(itemPath.endsWith(COMMAND_FILE_EXTENSION)) {
-					pushToMap(UNCATEGORIZED_CATEGORY_NAME, itemPath);
-				}
-			}
-		}
-
-		if(this.verbose) { this.logger.info(`Found ${yellow(commandCandidateMap.size)} command candidates.`); }
-		
-		let registeredCommandsCount = 0;
-		for(const category of commandCandidateMap.keys()) {
-			const categoryCommands = commandCandidateMap.get(category);
-			if(categoryCommands) {
-				for(const commandPath of categoryCommands) {
-					try {
-						this.registerCommand(commandPath);
-						registeredCommandsCount += 1;
-					} catch(error) {
-						this.logger.error(formatUnwrappedError(unwrapError(error), false));
-					}
-				}
-				if(this.verbose) {
-					if(category == UNCATEGORIZED_CATEGORY_NAME) {
-						this.logger.info(`Registered ${yellow(categoryCommands.length)} uncategorized commands(s).`);
-					} else {
-						this.logger.info(`Registered ${yellow(categoryCommands.length)} command(s) from category ${yellow(category)}.`);
+			const itemStat = statSync(itemPath);
+			if(itemStat.isFile()) {
+				const itemNameWithoutExtension = itemName.replace(COMMAND_FILE_EXTENSION, "");
+				const isHierarchyCommand = commandsPathItems.includes(itemNameWithoutExtension);
+				pushCandidate(itemPath, isHierarchyCommand);
+			} else if(itemStat.isDirectory()) {
+				const itemNameWithExtension = itemName + COMMAND_FILE_EXTENSION;
+				const isHierarchyCommandFolder = commandsPathItems.includes(itemNameWithExtension);
+				if(isHierarchyCommandFolder) {
+					pushCandidate(join(commandsPath, itemNameWithExtension), true);
+				} else {
+					const groupFolderContents = readdirSync(itemPath);
+					for(const groupItemName of groupFolderContents) {
+						const groupItemPath = join(itemPath, groupItemName);
+						if(statSync(groupItemPath).isFile()) { pushCandidate(groupItemPath, false); }
 					}
 				}
 			}
 		}
 
-		this.logger.info(`Registered ${yellow(registeredCommandsCount)} commands in total.`);
+		let registeredCount = 0;
+		for(const candidate of candidates) {
+			const { path, hierarchy } = candidate;
+			try {
+				const entry: CommandRegistryEntry = {
+					command: CommandRegistry.importCommand(path, hierarchy),
+					subcommands: []
+				};
+
+				if(hierarchy) {
+					const subcommandsDirectoryPath = path.replace(COMMAND_FILE_EXTENSION, "");
+					const subcommandsDirectoryContents = readdirSync(subcommandsDirectoryPath);
+					for(const subcommandFilename of subcommandsDirectoryContents) {
+						const subcommandFilePath = join(subcommandsDirectoryPath, subcommandFilename);
+						if(statSync(subcommandFilePath).isFile()) {
+							try {
+								const subcommand = CommandRegistry.importCommand(subcommandFilePath, false);
+								(entry.command.data as SlashCommandBuilder).addSubcommand(subcommand.data as SlashCommandSubcommandBuilder);
+								entry.subcommands.push(subcommand);
+							} catch(error) {
+								this.logger.error(formatUnwrappedError(unwrapError(error)));
+							}
+						}
+					}
+
+					if(entry.subcommands.length == 0) {
+						throw new NoHierarchySubcommandsFoundError(entry.command.data.name);
+					}
+				}
+
+				this.push(entry);
+				registeredCount++;
+			} catch(error) {
+				this.logger.error(formatUnwrappedError(unwrapError(error)));
+			}
+		}
+
+		this.logger.info(`Registered ${yellow(registeredCount)} command(s).`);
 	}
-	
-	public static importCommand(path: string): Command {
+
+	private static importCommand(path: string, hierarchy: boolean): Command {
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const command = require(path) as Command;
-		if(command.data === undefined || command.guilds == undefined || command.execute === undefined) {
-			throw new MalformedCommandError(path);
+
+		if(command.data === undefined) {
+			throw new InvalidCommandError(path, `Command doesn't export ${yellow("data")}.`);
 		}
+
+		if(!hierarchy && (command.execute === undefined || typeof command.execute !== "function")) {
+			throw new InvalidCommandError(path, `Command doesn't export ${yellow("execute")}, or it isn't of type ${yellow("function")}.`);
+		}
+
+		if(hierarchy && command.execute !== undefined && typeof command.execute !== "function") {
+			throw new InvalidCommandError(path, `Hierarchy command export ${"execute"} isn't of type ${yellow("function")}.`);
+		}
+
 		return command;
 	}
 
-	public override getHookables(): Array<Command> {
-		return super.getHookables() as Array<Command>;
+	public fetchAll(): Array<CommandRegistryEntry> {
+		return Array.from(this.data.values());
 	}
 
-	public override getHookableByName(name: string): Command | undefined {
-		return super.getHookableByName(name) as Command | undefined;
+	public fetchByIdentifier(identifier: string): CommandRegistryEntry | undefined {
+		return this.data.get(identifier);
 	}
 
-	public override getHookableByPath(path: string): Command | undefined {
-		return super.getHookableByPath(path) as Command | undefined;	
-	}
-
-	public registerCommand(path: string): Command {
-		if(!existsSync(path) || statSync(path).isDirectory()) { throw new InvalidCommandPathError(path); }
-
-		const command = CommandRegistry.importCommand(path);
-		const commandName = command.data.name;
-
-		if(this.getHookableByName(commandName) !== undefined) { 
-			throw new DuplicateCommandError(path);
-		} else {
-			this.nameHookableMappings.set(commandName, command);
-			this.pathNameMappings.set(path, commandName);
-			return command;
-		}
+	public push(entry: CommandRegistryEntry): void {
+		this.data.set(entry.command.data.name, entry);
 	}
 }
