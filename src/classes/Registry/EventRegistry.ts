@@ -1,118 +1,130 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-import { ClientEvents, Interaction } from "discord.js";
-import { Event } from "../../types/Registry/Event";
-import { Logger } from "../Logger";
-import { HookableRegistry } from "./HookableRegistry";
-import { existsSync, readdirSync, statSync } from "fs";
-import { DuplicateEventError, InvalidEventPathError, InvalidEventsPathError } from "../Errors/EventRegistry";
-import { MalformedEventError } from "../Errors/EventRegistry/";
-import { ExtendedClient } from "../ExtendedClient";
-import { join } from "path";
-import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { yellow } from "chalk";
-import { InteractionsExecuteArguments } from "../../types/Registry";
+import { ClientEvents, Interaction, InteractionType } from "discord.js";
+import { existsSync, readdirSync, statSync } from "fs";
+import { join } from "path";
+import { CommandExecuteFunction } from "../../types/Registry/Command";
+import { DiscriminatedEvent, Event } from "../../types/Registry/Event";
+import { formatUnwrappedError, unwrapError } from "../../util/Errors";
+import { CommandMissingExecuteError } from "../Errors/Registry/Command";
+import { InvalidEventError, InvalidEventsPathError } from "../Errors/Registry/Event";
+import { ExtendedClient } from "../ExtendedClient";
+import { Logger } from "../Logger";
+import { AbstractRegistry } from "./AbstractRegistry";
 
 const EVENT_FILE_EXTENSION = ".js";
 
-export class EventRegistry extends HookableRegistry {
+export class EventRegistry extends AbstractRegistry<Event> {
+	private data: Array<Event>;
 	private readonly client: ExtendedClient;
 
-	constructor(eventsPath: string, client: ExtendedClient, logger?: Logger, verbose?: boolean) {
-		super(logger || new Logger("EventRegistry"), verbose);
-		if(!existsSync(eventsPath)) { throw new InvalidEventsPathError(eventsPath); }
+	constructor(eventsPath: string, client: ExtendedClient, logger?: Logger) {
+		super(logger || new Logger("EventRegistry"));
+		if(!existsSync(eventsPath) || !statSync(eventsPath).isDirectory()) { throw new InvalidEventsPathError(eventsPath); }
+		this.data = [];
 		this.client = client;
 
 		const eventsPathItems = readdirSync(eventsPath);
-		let registeredEventsCount = 0;
-		for(const eventFileName of eventsPathItems) {
-			const eventPath = join(eventsPath, eventFileName);
-			if(statSync(eventPath).isFile() && eventFileName.endsWith(EVENT_FILE_EXTENSION)) {
+		let registeredCount = 0;
+
+		for(const eventFilename of eventsPathItems) {
+			const eventFilePath = join(eventsPath, eventFilename);
+			if(statSync(eventFilePath).isFile() && eventFilePath.endsWith(EVENT_FILE_EXTENSION)) {
 				try {
-					this.registerEvent(eventPath);
-					registeredEventsCount += 1;
+					const event = EventRegistry.importEvent(eventFilePath);
+					this.push(event);
+					registeredCount++;
 				} catch(error) {
 					this.logger.error(formatUnwrappedError(unwrapError(error), false));
 				}
 			}
 		}
 
-		if(this.getHookableByName("interactionCreate") === undefined) {
-			this.client.on("interactionCreate", this.defaultInteractionHookImplementation.bind(this));
+		if(!this.fetchByIdentifier("interactionCreate")) {
+			this.logger.warning(`Using default ${yellow("interactionCreate")} event implementation.`);
+			const defaultEvent: DiscriminatedEvent<"interactionCreate"> = {
+				name: "interactionCreate",
+				once: false,
+				listener: EventRegistry.defaultInteractionCreateEventImplementation.bind(this)
+			};
+
+			this.push(defaultEvent as Event);
+			registeredCount++;
 		}
 
-		this.logger.info(`Registered ${yellow(registeredEventsCount)} event(s) in total.`);
+		this.logger.info(`Registered ${yellow(registeredCount)} event(s).`);
 	}
-	
-	private async defaultInteractionHookImplementation(interaction: Interaction) {
+
+	private static async defaultInteractionCreateEventImplementation(this: EventRegistry, interaction: Interaction) {
 		if(interaction.user.bot) return;
-		if(interaction.isCommand()) {
-			const commandInteraction = interaction as InteractionsExecuteArguments;
-			const commandName = commandInteraction.commandName;
-			const command = this.client.commands.getHookableByName(commandName);
-			if(command) {
-				if(Array.isArray(command)) {
-					if(commandInteraction.isChatInputCommand()) {
-						const subcommandName = commandInteraction.options.getSubcommand(true);
-						const subcommand = command.find(command => command.data.name === subcommandName);
-						if(subcommand) {
-							await subcommand.execute(commandInteraction);
-						} else {
-							this.logger.warning(`Missed subcommand execute from command name ${yellow(commandName)}, subcommand ${yellow(subcommandName)}.`);
+		switch(interaction.type) {
+		case InteractionType.ApplicationCommand: {
+			const commandName = interaction.commandName;
+			const entry = this.client.commandRegistry.fetchByIdentifier(commandName);
+			if(entry) {
+				let execute: CommandExecuteFunction<typeof interaction> | undefined = entry.command.execute;
+				if(interaction.isChatInputCommand()) {
+					const subcommandName = interaction.options.getSubcommand(false);
+					if(subcommandName) {
+						if(entry.subcommands) {
+							const subcommand = entry.subcommands.find(subcommand => subcommand.data.name === subcommandName);
+							if(subcommand) {
+								execute = subcommand.execute;
+							}
 						}
 					}
-				} else {
-					try {
-						await command.execute(commandInteraction);
-					} catch(error) {
-						this.logger.error("Command execution failed.");
-						this.logger.error(formatUnwrappedError(unwrapError(error)));
-					}
+				}
+
+				try {
+					if(!execute) { throw new CommandMissingExecuteError(commandName); }
+					await execute(interaction);
+				} catch(error) {
+					this.logger.error("Command execution failed.");
+					this.logger.error(formatUnwrappedError(unwrapError(error)));
 				}
 			} else {
-				this.logger.warning(`Missed command execute from command named ${yellow(commandName)}.`);
+				this.logger.error(`Missed execute call for command named ${yellow(commandName)}.`);
 			}
+			break; 
 		}
+		case InteractionType.MessageComponent: case InteractionType.ApplicationCommandAutocomplete:	case InteractionType.ModalSubmit: {
+			if(interaction.isRepliable()) {
+				await interaction.reply({ content: "Not implemented.", ephemeral: true });
+			}
+			break;
+		}}
 	}
 
-	public static importEvent(path: string): Event {
+	private static importEvent(path: string): Event {
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const event = require(path) as Event;
-		if(event.name === undefined || event.once === undefined || event.execute === undefined) {
-			throw new MalformedEventError(path);
+
+		if(event.name === undefined || typeof event.name !== "string") { 
+			throw new InvalidEventError(path, `Event doesn't export ${yellow("name")}, or it isn't of type ${yellow("string")}.`);
 		}
+		if(event.once === undefined || typeof event.once !== "boolean") {
+			throw new InvalidEventError(path, `Event doesn't export ${yellow("once")}, or it isn't of type ${yellow("boolean")}.`);
+		}
+		if(event.listener === undefined || typeof event.listener !== "function") {
+			throw new InvalidEventError(path, `Event doesn't export ${yellow("listener")}, or it isn't of type ${yellow("function")}.`);
+		}
+
 		return event;
 	}
 
-	public override getHookables(): Array<Event> {
-		return super.getHookables() as Array<Event>;	
-	}
-	
-	public override getHookableByName(name: keyof ClientEvents): Event | undefined {
-		return super.getHookableByName(name) as Event | undefined;
+	public fetchAll(): Array<Event> {
+		return this.data;
 	}
 
-	public override getHookableByPath(path: string): Event | undefined {
-		return super.getHookableByPath(path) as Event | undefined;
+	public fetchByIdentifier<Identifier extends keyof ClientEvents>(identifier: Identifier): DiscriminatedEvent<Identifier> | undefined {
+		return this.data.find(event => event.name === identifier) as DiscriminatedEvent<Identifier> | undefined;
 	}
 
-	public registerEvent(path: string): Event {
-		if(!existsSync(path) || statSync(path).isDirectory()) { throw new InvalidEventPathError(path); } 
-		
-		const event = EventRegistry.importEvent(path);
-		const eventName = event.name;
-
-		if(this.getHookableByName(eventName) !== undefined) {
-			throw new DuplicateEventError(path);
+	public push(entry: Event): void {
+		this.data.push(entry);
+		if(!entry.once) {
+			this.client.on(entry.name, entry.listener);
 		} else {
-			this.nameHookableMappings.set(eventName, event);
-			this.pathNameMappings.set(path, eventName);
-	
-			if(!event.once) {
-				this.client.on(eventName, event.execute);
-			} else {
-				this.client.once(eventName, event.execute);
-			}
-	
-			return event;
+			this.client.once(entry.name, entry.listener);
 		}
 	}
 }
