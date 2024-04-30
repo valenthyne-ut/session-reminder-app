@@ -1,9 +1,9 @@
+import { yellow } from "chalk";
 import { Routes } from "discord.js";
+import { GuildDeployableCommand } from "../../types/Registry/Command";
+import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { Logger } from "../Logger";
 import { ExtendedClient } from "./ExtendedClient";
-import { yellow } from "chalk";
-import { formatUnwrappedError, unwrapError } from "../../util/Errors";
-import { GuildDeployableCommand } from "../../types/Registry/Command";
 
 export class CommandDeployer {
 	private client: ExtendedClient;

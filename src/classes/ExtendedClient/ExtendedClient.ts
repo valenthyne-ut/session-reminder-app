@@ -1,7 +1,7 @@
 import { Client } from "discord.js";
 import { ExtendedClientOptions } from "../../types/ExtendedClient/ExtendedClientOptions";
-import { EventRegistry } from "../Registry/EventRegistry";
-import { CommandRegistry } from "../Registry/CommandRegistry";
+import { CommandRegistry } from "../Registry";
+import { EventRegistry } from "../Registry";
 
 export class ExtendedClient extends Client {
 	public readonly commandRegistry: CommandRegistry;

@@ -1,15 +1,15 @@
-import { existsSync, readdirSync, statSync } from "fs";
-import { DiscriminatedEvent, Event } from "../../types/Registry/Event";
-import { InvalidEventError, InvalidEventsPathError } from "../Errors/Registry/Event";
-import { Logger } from "../Logger";
-import { AbstractRegistry } from "./AbstractRegistry";
-import { join } from "path";
-import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { yellow } from "chalk";
 import { ClientEvents, Interaction, InteractionType } from "discord.js";
-import { ExtendedClient } from "../ExtendedClient";
+import { existsSync, readdirSync, statSync } from "fs";
+import { join } from "path";
 import { CommandExecuteFunction } from "../../types/Registry/Command";
+import { DiscriminatedEvent, Event } from "../../types/Registry/Event";
+import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { CommandMissingExecuteError } from "../Errors/Registry/Command";
+import { InvalidEventError, InvalidEventsPathError } from "../Errors/Registry/Event";
+import { ExtendedClient } from "../ExtendedClient";
+import { Logger } from "../Logger";
+import { AbstractRegistry } from "./AbstractRegistry";
 
 const EVENT_FILE_EXTENSION = ".js";
 
