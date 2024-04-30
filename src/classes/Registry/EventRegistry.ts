@@ -63,7 +63,7 @@ export class EventRegistry extends AbstractRegistry<Event> {
 			if(entry) {
 				let execute: CommandExecuteFunction<typeof interaction> | undefined = entry.command.execute;
 				if(interaction.isChatInputCommand()) {
-					const subcommandName = interaction.options.getSubcommand();
+					const subcommandName = interaction.options.getSubcommand(false);
 					if(subcommandName) {
 						if(entry.subcommands) {
 							const subcommand = entry.subcommands.find(subcommand => subcommand.data.name === subcommandName);
