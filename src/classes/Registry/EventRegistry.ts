@@ -1,13 +1,15 @@
 import { existsSync, readdirSync, statSync } from "fs";
-import { Event } from "../../types/Registry/Event";
+import { DiscriminatedEvent, Event } from "../../types/Registry/Event";
 import { InvalidEventError, InvalidEventsPathError } from "../Errors/Registry/Event";
 import { Logger } from "../Logger";
 import { AbstractRegistry } from "./AbstractRegistry";
 import { join } from "path";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { yellow } from "chalk";
-import { ClientEvents } from "discord.js";
+import { ClientEvents, Interaction, InteractionType } from "discord.js";
 import { ExtendedClient } from "../ExtendedClient";
+import { CommandExecuteFunction } from "../../types/Registry/Command";
+import { CommandMissingExecuteError } from "../Errors/Registry/Command";
 
 const EVENT_FILE_EXTENSION = ".js";
 
@@ -37,13 +39,65 @@ export class EventRegistry extends AbstractRegistry<Event> {
 			}
 		}
 
+		if(!this.fetchByIdentifier("interactionCreate")) {
+			this.logger.warning(`Using default ${yellow("interactionCreate")} event implementation.`);
+			const defaultEvent: DiscriminatedEvent<"interactionCreate"> = {
+				name: "interactionCreate",
+				once: false,
+				listener: EventRegistry.defaultInteractionCreateEventImplementation.bind(this)
+			};
+
+			this.push(defaultEvent as Event);
+			registeredCount++;
+		}
+
 		this.logger.info(`Registered ${yellow(registeredCount)} event(s).`);
+	}
+
+	private static async defaultInteractionCreateEventImplementation(this: EventRegistry, interaction: Interaction) {
+		if(interaction.user.bot) return;
+		switch(interaction.type) {
+		case InteractionType.ApplicationCommand: {
+			const commandName = interaction.commandName;
+			const entry = this.client.commandRegistry.fetchByIdentifier(commandName);
+			if(entry) {
+				let execute: CommandExecuteFunction<typeof interaction> | undefined = entry.command.execute;
+				if(interaction.isChatInputCommand()) {
+					const subcommandName = interaction.options.getSubcommand();
+					if(subcommandName) {
+						if(entry.subcommands) {
+							const subcommand = entry.subcommands.find(subcommand => subcommand.data.name === subcommandName);
+							if(subcommand) {
+								execute = subcommand.execute;
+							}
+						}
+					}
+				}
+
+				try {
+					if(!execute) { throw new CommandMissingExecuteError(commandName); }
+					await execute(interaction);
+				} catch(error) {
+					this.logger.error("Command execution failed.");
+					this.logger.error(formatUnwrappedError(unwrapError(error)));
+				}
+			} else {
+				this.logger.error(`Missed execute call for command named ${yellow(commandName)}.`);
+			}
+			break; 
+		}
+		case InteractionType.MessageComponent: case InteractionType.ApplicationCommandAutocomplete:	case InteractionType.ModalSubmit: {
+			if(interaction.isRepliable()) {
+				await interaction.reply({ content: "Not implemented.", ephemeral: true });
+			}
+			break;
+		}}
 	}
 
 	private static importEvent(path: string): Event {
 		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const event = require(path) as Event;
-		
+
 		if(event.name === undefined || typeof event.name !== "string") { 
 			throw new InvalidEventError(path, `Event doesn't export ${yellow("name")}, or it isn't of type ${yellow("string")}.`);
 		}
@@ -61,8 +115,8 @@ export class EventRegistry extends AbstractRegistry<Event> {
 		return this.data;
 	}
 
-	public fetchByIdentifier(identifier: keyof ClientEvents): Event | undefined {
-		return this.data.find(event => event.name === identifier);
+	public fetchByIdentifier<Identifier extends keyof ClientEvents>(identifier: Identifier): DiscriminatedEvent<Identifier> | undefined {
+		return this.data.find(event => event.name === identifier) as DiscriminatedEvent<Identifier> | undefined;
 	}
 
 	public push(entry: Event): void {

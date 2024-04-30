@@ -1,10 +1,9 @@
 import { Awaitable, ClientEvents } from "discord.js";
 
-export type EventListenerFunction<Event extends keyof ClientEvents> =
-	(...args: ClientEvents[Event]) => Awaitable<void>;
-
-export interface Event {
-	name: keyof ClientEvents;
+export interface DiscriminatedEvent<Name extends keyof ClientEvents> {
+	name: Name;
 	once: boolean;
-	listener: EventListenerFunction<keyof ClientEvents>;
+	listener: (...args: ClientEvents[Name]) => Awaitable<void>;
 }
+
+export type Event = DiscriminatedEvent<keyof ClientEvents>;
