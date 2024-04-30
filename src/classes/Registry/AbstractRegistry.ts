@@ -8,6 +8,6 @@ export abstract class AbstractRegistry<T> {
 	}
 
 	public abstract fetchAll(): Array<T>;
-	public abstract fetchByIdentifier(identifier: unknown): T;
+	public abstract fetchByIdentifier(identifier: unknown): T | undefined;
 	public abstract push(entry: T): void;
 }
