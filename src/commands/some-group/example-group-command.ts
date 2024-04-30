@@ -7,5 +7,5 @@ export const data = new SlashCommandBuilder()
 export const guilds = [];
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-	await interaction.reply("Hello world!");
+	await interaction.reply("Hello world, from a grouped command!");
 }
