@@ -9,6 +9,6 @@ export type CommandExecuteFunction<T extends Interaction> =
 	(interaction: T) => Promise<void>;
 
 export interface Command {
-	data: SlashCommandBuilder
+	data: CommandBuilders
 	execute: CommandExecuteFunction<Interaction>;
 }
