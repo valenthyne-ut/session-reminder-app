@@ -7,7 +7,7 @@ import { ExtendedClient } from "../classes/ExtendedClient";
 
 export const name = "ready";
 export const once = true;
-export function execute(client: Client) {
+export function listener(client: Client) {
 	logger.info(`${bgBlack(client.user?.tag)} ready!`);
 	if(config.DEPLOY_COMMANDS) {
 		void new CommandDeployer(client as ExtendedClient).deployCommands();
