@@ -14,7 +14,7 @@ export class CommandDeployer {
 	}
 
 	async deployCommands() {
-		const userId = this.client.user?.id;
+		/*const userId = this.client.user?.id;
 
 		if(userId) {
 			const commands = this.client.commands.getHookables().map(value => Array.isArray(value) ? value[0] : value);
@@ -32,6 +32,6 @@ export class CommandDeployer {
 					this.logger.error(formatUnwrappedError(unwrapError(error)));
 				}
 			}
-		}
+		}*/
 	}
 }
