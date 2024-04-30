@@ -7,6 +7,6 @@ export class ExtendedClient extends Client {
 
 	constructor(options: ExtendedClientOptions) {
 		super(options);
-		this.eventRegistry = new EventRegistry(options.eventsPath);
+		this.eventRegistry = new EventRegistry(options.eventsPath, this);
 	}
 }

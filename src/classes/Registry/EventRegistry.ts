@@ -6,16 +6,20 @@ import { AbstractRegistry } from "./AbstractRegistry";
 import { join } from "path";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { yellow } from "chalk";
+import { ClientEvents } from "discord.js";
+import { ExtendedClient } from "../ExtendedClient";
 
 const EVENT_FILE_EXTENSION = ".js";
 
 export class EventRegistry extends AbstractRegistry<Event> {
 	private data: Array<Event>;
+	private readonly client: ExtendedClient;
 
-	constructor(eventsPath: string, logger?: Logger) {
+	constructor(eventsPath: string, client: ExtendedClient, logger?: Logger) {
 		super(logger || new Logger("EventRegistry"));
 		if(!existsSync(eventsPath) || !statSync(eventsPath).isDirectory()) { throw new InvalidEventsPathError(eventsPath); }
 		this.data = [];
+		this.client = client;
 
 		const eventsPathItems = readdirSync(eventsPath);
 		let registeredCount = 0;
@@ -57,11 +61,16 @@ export class EventRegistry extends AbstractRegistry<Event> {
 		return this.data;
 	}
 
-	public fetchByIdentifier(identifier: string): Event | undefined {
+	public fetchByIdentifier(identifier: keyof ClientEvents): Event | undefined {
 		return this.data.find(event => event.name === identifier);
 	}
 
 	public push(entry: Event): void {
 		this.data.push(entry);
+		if(!entry.once) {
+			this.client.on(entry.name, entry.listener);
+		} else {
+			this.client.once(entry.name, entry.listener);
+		}
 	}
 }
