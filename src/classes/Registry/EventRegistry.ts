@@ -85,12 +85,6 @@ export class EventRegistry extends AbstractRegistry<Event> {
 				this.logger.error(`Missed execute call for command named ${yellow(commandName)}.`);
 			}
 			break; 
-		}
-		case InteractionType.MessageComponent: case InteractionType.ApplicationCommandAutocomplete:	case InteractionType.ModalSubmit: {
-			if(interaction.isRepliable()) {
-				await interaction.reply({ content: "Not implemented.", ephemeral: true });
-			}
-			break;
 		}}
 	}
 

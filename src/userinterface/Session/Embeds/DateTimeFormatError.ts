@@ -1,5 +1,5 @@
 import { Colors, EmbedBuilder } from "discord.js";
-import { DATETIME_PARSE_FORMAT } from "../../../../commands/session";
+import { DATETIME_PARSE_FORMAT } from "../../../commands/session";
 
 export function DateTimeFormatError(erroneousFormat: string) {
 	return new EmbedBuilder()
