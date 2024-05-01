@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, MessageComponentInteraction } from "discord.js";
-import { ConfirmPrompt } from "../Session/ActionRows";
+import { ConfirmPrompt } from "../../Session/ActionRows";
 
 export function confirmPrompt(interaction: ChatInputCommandInteraction): Promise<boolean> {
 	return new Promise((resolve, reject) => {

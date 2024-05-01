@@ -5,7 +5,7 @@ import { logger } from "../../classes/Logger";
 import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { DATETIME_DISPLAY_FORMAT, DATETIME_PARSE_FORMAT } from "../session";
-import { confirmPrompt } from "../../userinterface/General";
+import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
 
 export const data = new SlashCommandSubcommandBuilder()
 	.setName("schedule")
