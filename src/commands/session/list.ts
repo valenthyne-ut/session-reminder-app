@@ -18,9 +18,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 	let currentSessionIndex = 0, currentSession = sessions[currentSessionIndex];
 	let rejected = false;
 
+	const fetchedTime = new Date();
 	const updateEmbed = async (rotten?: true) => {
 		await interaction.editReply({
-			embeds: [ DisplayList(currentSession.id, currentSession.date_time.getTime() / 1000, currentSessionIndex + 1, sessions.length, rotten) ],
+			embeds: [ DisplayList(currentSession.id, currentSession.date_time.getTime() / 1000, currentSessionIndex + 1, sessions.length, fetchedTime, rotten) ],
 			components: rotten ? [] : undefined
 		});
 	};
