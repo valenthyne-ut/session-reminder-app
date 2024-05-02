@@ -1,6 +1,6 @@
 import { Colors, EmbedBuilder } from "discord.js";
 
-export function NoReminderConfig() {
+export function NoConfig() {
 	return new EmbedBuilder()
 		.setColor(Colors.Purple)
 		.setTitle("No reminder configuration found")

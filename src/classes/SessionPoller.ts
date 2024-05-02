@@ -55,9 +55,9 @@ export class SessionPoller {
 	}
 
 	public async sendReminders(serverId: string) {
-		const serverReminderConfigs = await ServerReminderConfig.findAll();
-		const serverReminderConfig = serverReminderConfigs.find(info => info.serverId = serverId);;
-		if(!serverReminderConfig) { return; }
+		const serverConfigs = await ServerReminderConfig.findAll();
+		const serverConfig = serverConfigs.find(info => info.serverId = serverId);;
+		if(!serverConfig) { return; }
 
 		const sessions = this.serverSessionMap.get(serverId);
 		if(!sessions || sessions.length === 0) { return; }		
@@ -69,10 +69,10 @@ export class SessionPoller {
 		if(timeDifference < 28800) {
 			const nextSession = sessions.find(session => session.date_time.getTime() / 1000 === earliestTime)!;
 			
-			const server = this.client.guilds.cache.get(serverReminderConfig.serverId);
+			const server = this.client.guilds.cache.get(serverConfig.serverId);
 			if(!server) { return; }
 
-			const reminderChannel = server.channels.cache.get(serverReminderConfig.channelId) as TextChannel | undefined;
+			const reminderChannel = server.channels.cache.get(serverConfig.channelId) as TextChannel | undefined;
 			if(!reminderChannel) { return; }
 
 			try {

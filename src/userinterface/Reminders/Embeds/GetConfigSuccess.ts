@@ -1,6 +1,6 @@
 import { Colors, EmbedBuilder } from "discord.js";
 
-export function GetReminderConfigSuccess(channelId: string) {
+export function GetConfigSuccess(channelId: string) {
 	return new EmbedBuilder()
 		.setColor(Colors.Green)
 		.setTitle("Configuration")

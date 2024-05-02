@@ -1,3 +1,3 @@
-export * from "./GetReminderConfigError";
-export * from "./NoReminderConfig";
-export * from "./GetReminderConfigSuccess";
+export * from "./GetConfigError";
+export * from "./NoConfig";
+export * from "./GetConfigSuccess";

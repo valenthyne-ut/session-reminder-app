@@ -1,7 +1,8 @@
-import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
+import { SlashCommandSubcommandBuilder } from "discord.js";
 import moment from "moment";
 import { Session } from "../../classes/Database/Models";
 import { logger } from "../../classes/Logger";
+import { GuildChatInputCommandInteraction } from "../../types/ExtendedTypes";
 import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
 import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
@@ -23,9 +24,8 @@ export const data = new SlashCommandSubcommandBuilder()
 			.setMinValue(-12)
 			.setMaxValue(14));
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+export async function execute(interaction: GuildChatInputCommandInteraction) {
 	await interaction.deferReply();
-	if(!interaction.guildId) { return await interaction.editReply("Cannot execute this command outside of a server."); }
 
 	const dateTime = interaction.options.getString("date-time", true);
 	const utcOffset = interaction.options.getInteger("utc-offset", true);
@@ -47,7 +47,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 		const createSession = async () => {
 			const session = await Session.create({
-				server_id: interaction.guildId!,
+				server_id: interaction.guildId,
 				date_time: date
 			});
 	

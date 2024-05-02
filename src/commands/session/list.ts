@@ -1,5 +1,6 @@
-import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
+import { SlashCommandSubcommandBuilder } from "discord.js";
 import { Session } from "../../classes/Database/Models";
+import { GuildChatInputCommandInteraction } from "../../types/ExtendedTypes";
 import { PaginationEvent, paginationPrompt } from "../../userinterface/General/PromiseFunctions";
 import { DisplayList, ListNoneFound } from "../../userinterface/Session/Embeds";
 
@@ -7,9 +8,8 @@ export const data = new SlashCommandSubcommandBuilder()
 	.setName("list")
 	.setDescription("Display scheduled sessions.");
 
-export async function execute(interaction: ChatInputCommandInteraction) {
+export async function execute(interaction: GuildChatInputCommandInteraction) {
 	await interaction.deferReply();
-	if(!interaction.guildId) { return await interaction.editReply("Cannot execute this command outside of a server."); }
 
 	const sessions = await Session.findAll({ where: { server_id: interaction.guildId } });
 	if(sessions.length == 0) { return await interaction.editReply({ embeds: [ ListNoneFound() ] }); }

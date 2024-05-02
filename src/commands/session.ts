@@ -3,7 +3,8 @@ import { PermissionsBitField, SlashCommandBuilder } from "discord.js";
 export const data = new SlashCommandBuilder()
 	.setName("session")
 	.setDescription("A command to manage sessions.")
-	.setDefaultMemberPermissions(PermissionsBitField.Flags.ManageEvents);
+	.setDefaultMemberPermissions(PermissionsBitField.Flags.ManageEvents)
+	.setDMPermission(false);
 
 export const guilds = [];
 

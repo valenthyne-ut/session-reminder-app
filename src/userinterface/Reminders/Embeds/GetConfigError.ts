@@ -1,6 +1,6 @@
 import { Colors, EmbedBuilder } from "discord.js";
 
-export function GetReminderConfigError() {
+export function GetConfigError() {
 	return new EmbedBuilder()
 		.setColor(Colors.Red)
 		.setTitle("Error")
