@@ -1,8 +1,7 @@
 import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { Session } from "../../classes/Database/Models";
-import { ListNoneFound } from "../../userinterface/Session/Embeds";
-import { PaginationEvent, paginationPrompt } from "../../userinterface/General/PromiseFunctions/PaginationPrompt";
-import { DisplayList } from "../../userinterface/Session/Embeds";
+import { PaginationEvent, paginationPrompt } from "../../userinterface/General/PromiseFunctions";
+import { DisplayList, ListNoneFound } from "../../userinterface/Session/Embeds";
 
 export const data = new SlashCommandSubcommandBuilder()
 	.setName("list")
