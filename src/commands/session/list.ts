@@ -1,7 +1,8 @@
 import { SlashCommandSubcommandBuilder } from "discord.js";
-import { Session } from "../../classes/Database/Models";
+import { ServerReminderConfig, Session } from "../../classes/Database/Models";
 import { GuildChatInputCommandInteraction } from "../../types/ExtendedTypes";
 import { PaginationEvent, paginationPrompt } from "../../userinterface/General/PromiseFunctions";
+import { NoConfig } from "../../userinterface/Reminders/Embeds";
 import { DisplayList, ListNoneFound } from "../../userinterface/Session/Embeds";
 
 export const data = new SlashCommandSubcommandBuilder()
@@ -9,6 +10,10 @@ export const data = new SlashCommandSubcommandBuilder()
 	.setDescription("Display scheduled sessions.");
 
 export async function execute(interaction: GuildChatInputCommandInteraction) {
+	if(!(await ServerReminderConfig.existsFor(interaction.guildId))) {
+		return await interaction.reply({ embeds: [ NoConfig(true) ] });
+	}
+
 	await interaction.deferReply();
 
 	const sessions = await Session.findAll({ where: { server_id: interaction.guildId } });

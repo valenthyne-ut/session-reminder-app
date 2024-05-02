@@ -1,8 +1,9 @@
 import { SlashCommandSubcommandBuilder } from "discord.js";
-import { Session } from "../../classes/Database/Models";
+import { ServerReminderConfig, Session } from "../../classes/Database/Models";
 import { logger } from "../../classes/Logger";
 import { GuildChatInputCommandInteraction } from "../../types/ExtendedTypes";
 import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
+import { NoConfig } from "../../userinterface/Reminders/Embeds";
 import { DeleteCancel, DeleteError, DeleteIdNotFound, DeletePrompt, DeleteSuccess } from "../../userinterface/Session/Embeds";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 
@@ -16,6 +17,10 @@ export const data = new SlashCommandSubcommandBuilder()
 			.setRequired(true));
 
 export async function execute(interaction: GuildChatInputCommandInteraction) {
+	if(!(await ServerReminderConfig.existsFor(interaction.guildId))) {
+		return await interaction.reply({ embeds: [ NoConfig(true) ] });
+	}
+
 	await interaction.deferReply();
 	
 	const sessionId = interaction.options.getInteger("id", true);

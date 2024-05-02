@@ -1,9 +1,10 @@
 import { SlashCommandSubcommandBuilder } from "discord.js";
 import moment from "moment";
-import { Session } from "../../classes/Database/Models";
+import { ServerReminderConfig, Session } from "../../classes/Database/Models";
 import { logger } from "../../classes/Logger";
 import { GuildChatInputCommandInteraction } from "../../types/ExtendedTypes";
 import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
+import { NoConfig } from "../../userinterface/Reminders/Embeds";
 import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { DATETIME_DISPLAY_FORMAT, DATETIME_PARSE_FORMAT } from "../session";
@@ -25,6 +26,10 @@ export const data = new SlashCommandSubcommandBuilder()
 			.setMaxValue(14));
 
 export async function execute(interaction: GuildChatInputCommandInteraction) {
+	if(!(await ServerReminderConfig.existsFor(interaction.guildId))) {
+		return await interaction.reply({ embeds: [ NoConfig(true) ] });
+	}
+
 	await interaction.deferReply();
 
 	const dateTime = interaction.options.getString("date-time", true);

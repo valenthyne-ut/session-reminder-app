@@ -40,6 +40,6 @@ export class ServerReminderConfig extends Model<InferAttributes<ServerReminderCo
 	};
 
 	public static async existsFor(serverId: string): Promise<boolean> {
-		return await ServerReminderConfig.findOne({ where: { serverId: serverId } }) !== undefined;
+		return await ServerReminderConfig.findOne({ where: { serverId: serverId } }) !== null;
 	}
 }

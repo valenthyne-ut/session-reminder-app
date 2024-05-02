@@ -10,12 +10,12 @@ export const data = new SlashCommandSubcommandBuilder()
 	.setDescription("Get the configuration for this guild's reminders.");
 
 export async function execute(interaction: GuildChatInputCommandInteraction) {
-	await interaction.deferReply();
+	await interaction.deferReply({ ephemeral: true });
 
 	try {
 		const serverConfig = await ServerReminderConfig.findOne({ where: { serverId: interaction.guildId } });
 		if(serverConfig) {
-			await interaction.editReply({ embeds: [ GetConfigSuccess(serverConfig.channelId) ] });
+			await interaction.editReply({ embeds: [ GetConfigSuccess(serverConfig.channelId, serverConfig.roleId) ] });
 		} else {
 			await interaction.editReply({ embeds: [ NoConfig() ] });
 		}
