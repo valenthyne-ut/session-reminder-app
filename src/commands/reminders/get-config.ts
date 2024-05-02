@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import { logger } from "../../classes/Logger";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
-import { GuildReminderConfig } from "../../classes/Database/Models";
+import { ServerReminderConfig } from "../../classes/Database/Models";
 import { GetReminderConfigError, GetReminderConfigSuccess, NoReminderConfig } from "../../userinterface/Reminders/Embeds";
 
 export const data = new SlashCommandSubcommandBuilder()
@@ -13,9 +13,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 	if(!interaction.guildId) { return await interaction.editReply("Cannot execute this command outside of a server."); }
 
 	try {
-		const guildReminderInfo = await GuildReminderConfig.findOne({ where: { server_id: interaction.guildId } });
+		const guildReminderInfo = await ServerReminderConfig.findOne({ where: { serverId: interaction.guildId } });
 		if(guildReminderInfo) {
-			await interaction.editReply({ embeds: [ GetReminderConfigSuccess(guildReminderInfo.channel_id) ] });
+			await interaction.editReply({ embeds: [ GetReminderConfigSuccess(guildReminderInfo.channelId) ] });
 		} else {
 			await interaction.editReply({ embeds: [ NoReminderConfig() ] });
 		}

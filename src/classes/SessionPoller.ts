@@ -1,5 +1,5 @@
 import { TextChannel } from "discord.js";
-import { GuildReminderConfig, Session } from "./Database/Models";
+import { ServerReminderConfig, Session } from "./Database/Models";
 import { ExtendedClient } from "./ExtendedClient";
 import { Logger } from "./Logger";
 import { formatUnwrappedError, unwrapError } from "../util/Errors";
@@ -55,9 +55,9 @@ export class SessionPoller {
 	}
 
 	public async sendReminders(serverId: string) {
-		const guildReminderConfigs = await GuildReminderConfig.findAll();
-		const guildReminderConfig = guildReminderConfigs.find(info => info.server_id = serverId);;
-		if(!guildReminderConfig) { return; }
+		const serverReminderConfigs = await ServerReminderConfig.findAll();
+		const serverReminderConfig = serverReminderConfigs.find(info => info.serverId = serverId);;
+		if(!serverReminderConfig) { return; }
 
 		const sessions = this.serverSessionMap.get(serverId);
 		if(!sessions || sessions.length === 0) { return; }		
@@ -69,10 +69,10 @@ export class SessionPoller {
 		if(timeDifference < 28800) {
 			const nextSession = sessions.find(session => session.date_time.getTime() / 1000 === earliestTime)!;
 			
-			const guild = this.client.guilds.cache.get(guildReminderConfig.server_id);
-			if(!guild) { return; }
+			const server = this.client.guilds.cache.get(serverReminderConfig.serverId);
+			if(!server) { return; }
 
-			const reminderChannel = guild.channels.cache.get(guildReminderConfig.channel_id) as TextChannel | undefined;
+			const reminderChannel = server.channels.cache.get(serverReminderConfig.channelId) as TextChannel | undefined;
 			if(!reminderChannel) { return; }
 
 			try {
