@@ -24,10 +24,10 @@ export async function execute(interaction: GuildChatInputCommandInteraction) {
 	await interaction.deferReply();
 	
 	const sessionId = interaction.options.getInteger("id", true);
-	const session = await Session.findOne({ where: { id: sessionId, server_id: interaction.guildId } });
+	const session = await Session.findOne({ where: { id: sessionId, serverId: interaction.guildId } });
 
 	if(session) {
-		await interaction.editReply({ embeds: [ DeletePrompt(sessionId, session.date_time.getTime() / 1000) ] });
+		await interaction.editReply({ embeds: [ DeletePrompt(sessionId, session.dateTime.getTime() / 1000) ] });
 		const result = await confirmPrompt(interaction);
 
 		if(result) {

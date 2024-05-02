@@ -5,9 +5,9 @@ export class Session extends Model<InferAttributes<Session>, InferCreationAttrib
 	declare createdAt: CreationOptional<Date>;
 	declare updatedAt: CreationOptional<Date>;
 
-	declare server_id: string;
-	declare date_time: Date;
-	declare reminder_stage: CreationOptional<number>;
+	declare serverId: string;
+	declare dateTime: Date;
+	declare reminderStage: CreationOptional<number>;
 
 	static initModel(sequelize: Sequelize): typeof Session {
 		return Session.init({
@@ -24,15 +24,15 @@ export class Session extends Model<InferAttributes<Session>, InferCreationAttrib
 				type: DataTypes.DATE
 			},
 
-			server_id: {
+			serverId: {
 				type: DataTypes.TEXT,
 				allowNull: false
 			},
-			date_time: {
+			dateTime: {
 				type: DataTypes.DATE,
 				allowNull: false
 			},
-			reminder_stage: {
+			reminderStage: {
 				type: DataTypes.INTEGER,
 				defaultValue: 0
 			}

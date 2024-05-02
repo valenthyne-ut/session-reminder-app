@@ -44,16 +44,16 @@ export async function execute(interaction: GuildChatInputCommandInteraction) {
 	try {
 		const newSessionTime = utcTime.toDate().getTime() / 1000;
 
-		const guildSessions = await Session.findAll({ where: { server_id: interaction.guildId } });
+		const guildSessions = await Session.findAll({ where: { serverId: interaction.guildId } });
 		const hasSessionInTimeframe = guildSessions.find(session => { 
-			const sessionTime = session.date_time.getTime() / 1000;
+			const sessionTime = session.dateTime.getTime() / 1000;
 			if(sessionTime + 7200 > newSessionTime && sessionTime - 7200 < newSessionTime) { return session; }
 		}) !== undefined;
 
 		const createSession = async () => {
 			const session = await Session.create({
-				server_id: interaction.guildId,
-				date_time: date
+				serverId: interaction.guildId,
+				dateTime: date
 			});
 	
 			await interaction.editReply({ embeds: [

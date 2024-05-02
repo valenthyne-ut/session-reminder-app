@@ -16,7 +16,7 @@ export async function execute(interaction: GuildChatInputCommandInteraction) {
 
 	await interaction.deferReply();
 
-	const sessions = await Session.findAll({ where: { server_id: interaction.guildId } });
+	const sessions = await Session.findAll({ where: { serverId: interaction.guildId } });
 	if(sessions.length == 0) { return await interaction.editReply({ embeds: [ ListNoneFound() ] }); }
 
 	let currentSessionIndex = 0, currentSession = sessions[currentSessionIndex];
@@ -25,7 +25,7 @@ export async function execute(interaction: GuildChatInputCommandInteraction) {
 	const fetchedTime = new Date();
 	const updateEmbed = async (rotten?: true) => {
 		await interaction.editReply({
-			embeds: [ DisplayList(currentSession.id, currentSession.date_time.getTime() / 1000, currentSessionIndex + 1, sessions.length, fetchedTime, rotten) ],
+			embeds: [ DisplayList(currentSession.id, currentSession.dateTime.getTime() / 1000, currentSessionIndex + 1, sessions.length, fetchedTime, rotten) ],
 			components: rotten ? [] : undefined
 		});
 	};

@@ -41,7 +41,7 @@ export class SessionPoller {
 		const newMap: typeof this.serverSessionMap = new Map();
 
 		for(const session of sessions) {
-			const { server_id } = session;
+			const { serverId: server_id } = session;
 			const serverSessions = newMap.get(server_id);
 	
 			if(serverSessions) {
@@ -63,12 +63,12 @@ export class SessionPoller {
 		const sessions = this.serverSessionMap.get(serverId);
 		if(!sessions || sessions.length === 0) { return; }		
 
-		const earliestTime = Math.min(...sessions.map(session => session.date_time.getTime() / 1000));
+		const earliestTime = Math.min(...sessions.map(session => session.dateTime.getTime() / 1000));
 		const curTime = new Date().getTime() / 1000;
 		const timeDifference = earliestTime - curTime;
 
 		if(timeDifference < 28800) {
-			const nextSession = sessions.find(session => session.date_time.getTime() / 1000 === earliestTime)!;
+			const nextSession = sessions.find(session => session.dateTime.getTime() / 1000 === earliestTime)!;
 			
 			const server = this.client.guilds.cache.get(serverConfig.serverId);
 			if(!server) { return; }
@@ -77,15 +77,15 @@ export class SessionPoller {
 			if(!reminderChannel) { return; }
 
 			try {
-				switch(nextSession.reminder_stage as 0 | 1) {
+				switch(nextSession.reminderStage as 0 | 1) {
 				case 0: {
-					await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionReminder(0, nextSession.date_time.getTime() / 1000) ] });
-					await nextSession.update({ reminder_stage: 1 });
+					await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionReminder(0, nextSession.dateTime.getTime() / 1000) ] });
+					await nextSession.update({ reminderStage: 1 });
 					break; }
 				case 1: {
 					if(earliestTime - curTime < 600) {
-						await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`,embeds: [ SessionReminder(1, nextSession.date_time.getTime() / 1000) ] });
-						await nextSession.update({ reminder_stage: 2 });
+						await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`,embeds: [ SessionReminder(1, nextSession.dateTime.getTime() / 1000) ] });
+						await nextSession.update({ reminderStage: 2 });
 						
 						setTimeout(() => {
 							void (async () => {
@@ -98,7 +98,7 @@ export class SessionPoller {
 				}
 			}
 			catch(error) {
-				this.logger.error(`Failed to update reminder at stage ${yellow(nextSession.reminder_stage)}.`);
+				this.logger.error(`Failed to update reminder at stage ${yellow(nextSession.reminderStage)}.`);
 				this.logger.error(formatUnwrappedError(unwrapError(error)));
 			}
 		}
