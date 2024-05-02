@@ -1,11 +1,11 @@
 import { Sequelize } from "sequelize";
 import { Session } from "./Session";
-import { GuildReminderInfo } from "./GuildReminderInfo";
+import { GuildReminderConfig } from "./GuildReminderConfig";
 
 export * from "./Session";
-export * from "./GuildReminderInfo";
+export * from "./GuildReminderConfig";
 
 export function initModels(sequelize: Sequelize) {
 	Session.initModel(sequelize);
-	GuildReminderInfo.initModel(sequelize);
+	GuildReminderConfig.initModel(sequelize);
 }
