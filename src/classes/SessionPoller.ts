@@ -4,6 +4,7 @@ import { ExtendedClient } from "./ExtendedClient";
 import { Logger } from "./Logger";
 import { formatUnwrappedError, unwrapError } from "../util/Errors";
 import { yellow } from "chalk";
+import { SessionReminder, SessionStarting } from "../userinterface/Reminders/Embeds";
 
 const POLLING_INTERVAL = 1000 * 30;
 
@@ -76,19 +77,23 @@ export class SessionPoller {
 			if(!reminderChannel) { return; }
 
 			try {
-				switch(nextSession.reminder_stage as 0 | 1 | 2) {
+				switch(nextSession.reminder_stage as 0 | 1) {
 				case 0: {
-					await reminderChannel.send(`Next session is <t:${earliestTime}:R>.`);
+					await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionReminder(0, nextSession.date_time.getTime() / 1000) ] });
 					await nextSession.update({ reminder_stage: 1 });
 					break; }
 				case 1: {
 					if(earliestTime - curTime < 600) {
-						await reminderChannel.send(`Next session is <t:${earliestTime}:R>!`);
+						await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`,embeds: [ SessionReminder(1, nextSession.date_time.getTime() / 1000) ] });
 						await nextSession.update({ reminder_stage: 2 });
+						
+						setTimeout(() => {
+							void (async () => {
+								await nextSession.destroy();
+								await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionStarting() ] });
+							})();
+						}, timeDifference * 1000);
 					}
-					break; }
-				case 2: {
-					await nextSession.destroy();
 					break; }
 				}
 			}
