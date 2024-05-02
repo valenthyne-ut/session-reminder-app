@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, MessageComponentInteraction } from "discor
 import { ConfirmPrompt } from "../../Session/ActionRows";
 
 export function confirmPrompt(interaction: ChatInputCommandInteraction): Promise<boolean> {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		void interaction.editReply({ components: [ ConfirmPrompt() ] }).then(async promptMessage => {
 			const filter = (promptInteraction: MessageComponentInteraction) => {
 				void promptInteraction.deferUpdate();
@@ -17,12 +17,12 @@ export function confirmPrompt(interaction: ChatInputCommandInteraction): Promise
 						resolve(true);
 						break; }
 					case "cancel": default: {
-						reject(false);
+						resolve(false);
 						break; }
 					}
 				})
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				.catch(_ => { reject(false); });
+				.catch(_ => { resolve(false); });
 		});
 	});
 }
