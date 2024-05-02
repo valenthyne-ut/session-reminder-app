@@ -1,16 +1,22 @@
 import { TextChannel } from "discord.js";
-import { GuildReminderChannel, Session } from "./Database/Models";
+import { GuildReminderInfo, Session } from "./Database/Models";
 import { ExtendedClient } from "./ExtendedClient";
+import { Logger } from "./Logger";
+import { formatUnwrappedError, unwrapError } from "../util/Errors";
+import { yellow } from "chalk";
 
 const POLLING_INTERVAL = 1000 * 30;
 
 export class SessionPoller {
 	private client: ExtendedClient;
-	public sessionServerMap: Map<string, Array<Session>>; 
+	private logger: Logger;
+
+	public serverSessionMap: Map<string, Array<Session>>; 
 
 	constructor(client: ExtendedClient) {
 		this.client = client;
-		this.sessionServerMap = new Map();
+		this.logger = new Logger("SessionPoller");
+		this.serverSessionMap = new Map();
 
 		void this.poll();
 		setInterval(() => {
@@ -25,35 +31,13 @@ export class SessionPoller {
 		if(sessions.length == 0) { return; };
 
 		this.updateMap(sessions);
-		
-		const guildReminderChannels = await GuildReminderChannel.findAll();
-
-		for(const serverId of this.sessionServerMap.keys()) {
-			const guildReminderChannel = guildReminderChannels.find(channel => channel.server_id === serverId);
-
-			const sessions = this.sessionServerMap.get(serverId);
-			if(!sessions || sessions.length == 0) { continue; }
-			if(!guildReminderChannel) { continue; }
-
-			const earliestTime = Math.min(...sessions.map(session => session.date_time.getTime())) / 1000;
-			if((earliestTime - new Date().getTime() / 1000) < 86400) {
-				const nextSession = sessions.find(session => session.date_time.getTime() / 1000 == earliestTime)!;
-				if(!nextSession.reminder_sent) {
-					const guild = this.client.guilds.cache.get(guildReminderChannel.server_id);
-					if(!guild) { continue; }
-
-					const reminderChannel = guild.channels.cache.get(guildReminderChannel.channel_id) as TextChannel | undefined;
-					if(!reminderChannel) { continue; }
-
-					await reminderChannel.send(`Next session is <t:${earliestTime}:R>.`);
-					await nextSession.update({ reminder_sent: true });
-				}
-			}			
+		for(const serverId of this.serverSessionMap.keys()) {
+			await this.sendReminders(serverId);
 		}
 	}
 
 	public updateMap(sessions: Array<Session>) {
-		const newMap: typeof this.sessionServerMap = new Map();
+		const newMap: typeof this.serverSessionMap = new Map();
 
 		for(const session of sessions) {
 			const { server_id } = session;
@@ -67,6 +51,52 @@ export class SessionPoller {
 			}
 		}
 
-		this.sessionServerMap = newMap;
+		this.serverSessionMap = newMap;
+	}
+
+	public async sendReminders(serverId: string) {
+		const guildsReminderInfo = await GuildReminderInfo.findAll();
+		const guildReminderInfo = guildsReminderInfo.find(info => info.server_id = serverId);;
+		if(!guildReminderInfo) { return; }
+
+		const sessions = this.serverSessionMap.get(serverId);
+		if(!sessions || sessions.length === 0) { return; }		
+
+		const earliestTime = Math.min(...sessions.map(session => session.date_time.getTime() / 1000));
+		const curTime = new Date().getTime() / 1000;
+		const timeDifference = earliestTime - curTime;
+
+		if(timeDifference < 28800) {
+			const nextSession = sessions.find(session => session.date_time.getTime() / 1000 === earliestTime)!;
+			
+			const guild = this.client.guilds.cache.get(guildReminderInfo.server_id);
+			if(!guild) { return; }
+
+			const reminderChannel = guild.channels.cache.get(guildReminderInfo.channel_id) as TextChannel | undefined;
+			if(!reminderChannel) { return; }
+
+			try {
+				switch(nextSession.reminder_stage as 0 | 1 | 2) {
+				case 0: {
+					await reminderChannel.send(`Next session is <t:${earliestTime}:R>.`);
+					await nextSession.update({ reminder_stage: 1 });
+					break; }
+				case 1: {
+					if(earliestTime - curTime < 600) {
+						await reminderChannel.send(`Next session is <t:${earliestTime}:R>!`);
+						await nextSession.update({ reminder_stage: 2 });
+					}
+					break; }
+				case 2: {
+					await nextSession.destroy();
+					break; }
+				}
+			}
+			catch(error) {
+				this.logger.error(`Failed to update reminder at stage ${yellow(nextSession.reminder_stage)}.`);
+				this.logger.error(formatUnwrappedError(unwrapError(error)));
+			}
+		}
+
 	}
 }

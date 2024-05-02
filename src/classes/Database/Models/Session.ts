@@ -7,7 +7,7 @@ export class Session extends Model<InferAttributes<Session>, InferCreationAttrib
 
 	declare server_id: string;
 	declare date_time: Date;
-	declare reminder_sent: CreationOptional<boolean>;
+	declare reminder_stage: CreationOptional<number>;
 
 	static initModel(sequelize: Sequelize): typeof Session {
 		return Session.init({
@@ -32,9 +32,9 @@ export class Session extends Model<InferAttributes<Session>, InferCreationAttrib
 				type: DataTypes.DATE,
 				allowNull: false
 			},
-			reminder_sent: {
-				type: DataTypes.BOOLEAN,
-				defaultValue: false
+			reminder_stage: {
+				type: DataTypes.INTEGER,
+				defaultValue: 0
 			}
 		}, { sequelize });
 	};

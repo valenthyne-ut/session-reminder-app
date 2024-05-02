@@ -1,11 +1,11 @@
 import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import moment from "moment";
-import { GuildReminderChannel, Session } from "../../classes/Database/Models";
+import { GuildReminderInfo, Session } from "../../classes/Database/Models";
 import { logger } from "../../classes/Logger";
+import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
 import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { DATETIME_DISPLAY_FORMAT, DATETIME_PARSE_FORMAT } from "../session";
-import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
 
 export const data = new SlashCommandSubcommandBuilder()
 	.setName("schedule")
@@ -72,6 +72,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 		logger.error(formatUnwrappedError(unwrapError(error)));
 	}
 
-	await GuildReminderChannel.assignGuildReminderChannel(interaction.guildId, interaction.channelId);
+	await GuildReminderInfo.assignGuildReminderChannel(interaction.guildId, interaction.channelId);
 }
 	

@@ -1,6 +1,6 @@
 import { CreationOptional, DataTypes, InferAttributes, InferCreationAttributes, Model, Sequelize } from "sequelize";
 
-export class GuildReminderChannel extends Model<InferAttributes<GuildReminderChannel>, InferCreationAttributes<GuildReminderChannel>> {
+export class GuildReminderInfo extends Model<InferAttributes<GuildReminderInfo>, InferCreationAttributes<GuildReminderInfo>> {
 	declare id: CreationOptional<number>;
 	declare createdAt: CreationOptional<number>;
 	declare updatedAt: CreationOptional<number>;
@@ -8,8 +8,8 @@ export class GuildReminderChannel extends Model<InferAttributes<GuildReminderCha
 	declare server_id: string;
 	declare channel_id: string;
 
-	static initModel(sequelize: Sequelize): typeof GuildReminderChannel {
-		return GuildReminderChannel.init({
+	static initModel(sequelize: Sequelize): typeof GuildReminderInfo {
+		return GuildReminderInfo.init({
 			id: {
 				type: DataTypes.INTEGER,
 				primaryKey: true,
@@ -35,13 +35,13 @@ export class GuildReminderChannel extends Model<InferAttributes<GuildReminderCha
 	};
 
 	static async assignGuildReminderChannel(server_id: string, channel_id: string, override?: true) {
-		const channel = await GuildReminderChannel.findOne({ where: { server_id: server_id } });
+		const channel = await GuildReminderInfo.findOne({ where: { server_id: server_id } });
 		
 		if(channel && !override) { return; }
 		else if(channel && override) {
 			await channel.update("channel_id", channel_id);
 		} else {
-			await GuildReminderChannel.create({
+			await GuildReminderInfo.create({
 				server_id: server_id,
 				channel_id: channel_id
 			});
