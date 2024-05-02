@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandSubcommandBuilder } from "discord.js";
 import moment from "moment";
-import { GuildReminderConfig, Session } from "../../classes/Database/Models";
+import { Session } from "../../classes/Database/Models";
 import { logger } from "../../classes/Logger";
 import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
 import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
@@ -71,7 +71,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 		await interaction.editReply({ embeds: [ CreateError() ] });
 		logger.error(formatUnwrappedError(unwrapError(error)));
 	}
-
-	await GuildReminderConfig.setReminderChannel(interaction.guildId, interaction.channelId);
 }
 	

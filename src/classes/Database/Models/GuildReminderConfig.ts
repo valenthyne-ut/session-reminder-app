@@ -7,8 +7,9 @@ export class GuildReminderConfig extends Model<InferAttributes<GuildReminderConf
 
 	declare server_id: string;
 	declare channel_id: string;
+	declare role_id: string;
 
-	static initModel(sequelize: Sequelize): typeof GuildReminderConfig {
+	public static initModel(sequelize: Sequelize): typeof GuildReminderConfig {
 		return GuildReminderConfig.init({
 			id: {
 				type: DataTypes.INTEGER,
@@ -30,21 +31,15 @@ export class GuildReminderConfig extends Model<InferAttributes<GuildReminderConf
 			channel_id: {
 				type: DataTypes.TEXT,
 				allowNull: false
+			},
+			role_id: {
+				type: DataTypes.TEXT,
+				allowNull: false
 			}
 		}, { sequelize });
 	};
 
-	static async setReminderChannel(server_id: string, channel_id: string, override?: true) {
-		const channel = await GuildReminderConfig.findOne({ where: { server_id: server_id } });
-		
-		if(channel && !override) { return; }
-		else if(channel && override) {
-			await channel.update("channel_id", channel_id);
-		} else {
-			await GuildReminderConfig.create({
-				server_id: server_id,
-				channel_id: channel_id
-			});
-		}
+	public static async existsFor(guildId: string): Promise<boolean> {
+		return await GuildReminderConfig.findOne({ where: { server_id: guildId } }) !== undefined;
 	}
 }
