@@ -1,10 +1,10 @@
+import { yellow } from "chalk";
 import { TextChannel } from "discord.js";
-import { ServerReminderConfig, Session } from "./Database/Models";
+import { SessionReminder, SessionStarting } from "../userinterface/Reminders/Embeds";
+import { formatUnwrappedError, unwrapError } from "../util/Errors";
+import { ServerReminderConfig, Session, Unit } from "./Database/Models";
 import { ExtendedClient } from "./ExtendedClient";
 import { Logger } from "./Logger";
-import { formatUnwrappedError, unwrapError } from "../util/Errors";
-import { yellow } from "chalk";
-import { SessionReminder, SessionStarting } from "../userinterface/Reminders/Embeds";
 
 const POLLING_INTERVAL = 1000 * 30;
 
@@ -61,7 +61,17 @@ export class SessionPoller {
 		if(!serverConfig) { return; }
 
 		const sessions = this.serverSessionMap.get(serverId);
-		if(!sessions || sessions.length === 0) { return; }		
+		if(!sessions || sessions.length === 0) { return; }
+
+		const units = await Unit.findAll({ where: { serverId: serverId } });
+		let selectedUnit: { name: string, length: number } | undefined; 
+
+		if(!units || units.length === 0) {
+			selectedUnit = { name: "second", length: 0 };
+		} else {
+			const randomUnit = units[Math.floor(Math.random() * units.length)];
+			selectedUnit = { name: randomUnit.name, length: randomUnit.length };
+		}
 
 		const earliestTime = Math.min(...sessions.map(session => session.dateTime.getTime() / 1000));
 		const curTime = new Date().getTime() / 1000;
@@ -79,12 +89,12 @@ export class SessionPoller {
 			try {
 				switch(nextSession.reminderStage as 0 | 1) {
 				case 0: {
-					await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionReminder(0, nextSession.dateTime.getTime() / 1000) ] });
+					await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionReminder(0, selectedUnit, timeDifference, nextSession.dateTime.getTime() / 1000) ] });
 					await nextSession.update({ reminderStage: 1 });
 					break; }
 				case 1: {
 					if(earliestTime - curTime < 600) {
-						await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`,embeds: [ SessionReminder(1, nextSession.dateTime.getTime() / 1000) ] });
+						await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`,embeds: [ SessionReminder(1, selectedUnit, timeDifference, nextSession.dateTime.getTime() / 1000) ] });
 						await nextSession.update({ reminderStage: 2 });
 						
 						setTimeout(() => {
