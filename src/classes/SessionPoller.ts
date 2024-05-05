@@ -67,17 +67,61 @@ export class SessionPoller {
 		let selectedUnit: { name: string, length: number } | undefined; 
 
 		if(!units || units.length === 0) {
-			selectedUnit = { name: "second", length: 0 };
+			selectedUnit = { name: "second", length: 1 };
 		} else {
 			const randomUnit = units[Math.floor(Math.random() * units.length)];
 			selectedUnit = { name: randomUnit.name, length: randomUnit.length };
 		}
 
-		const earliestTime = Math.min(...sessions.map(session => session.dateTime.getTime() / 1000));
 		const curTime = new Date().getTime() / 1000;
-		const timeDifference = earliestTime - curTime;
+		const sessionsInTimeFrame = sessions.filter(session => session.dateTime.getTime() / 1000 - curTime < 28800);
 
-		if(timeDifference < 28800) {
+		const server = this.client.guilds.cache.get(serverConfig.serverId);
+		if(!server) { return; }
+
+		const reminderChannel = server.channels.cache.get(serverConfig.channelId) as TextChannel | undefined;
+		if(!reminderChannel) { return; }
+
+		for(const session of sessionsInTimeFrame) {
+			const { dateTime, reminderStage } = session;
+			const sessionDateTime = dateTime.getTime() / 1000;
+			const timeDifference = sessionDateTime - curTime;
+			try {
+				switch(reminderStage) {
+				case 0: {
+					await reminderChannel.send({ 
+						content: `<@&${serverConfig.roleId}>`,
+						embeds: [ SessionReminder(0, selectedUnit, timeDifference, sessionDateTime) ] 
+					});
+					await session.update({ reminderStage: 1 });
+					break; }
+				case 1: {
+					if(timeDifference < 600) {
+						await reminderChannel.send({ 
+							content: `<@&${serverConfig.roleId}>`,
+							embeds: [ SessionReminder(1, selectedUnit, timeDifference, sessionDateTime) ] 
+						});
+						await session.update({ reminderStage: 2 });
+						
+						setTimeout(() => {
+							void (async () => {
+								await session.destroy();
+								await reminderChannel.send({ 
+									content: `<@&${serverConfig.roleId}>`, 
+									embeds: [ SessionStarting() ] 
+								});
+							})();
+						}, timeDifference * 1000);
+					}
+					break; }
+				}
+			} catch(error) {
+				this.logger.error(`Failed to update reminder at stage ${yellow(reminderStage)}.`);
+				this.logger.error(formatUnwrappedError(unwrapError(error)));
+			}
+		}
+
+		/*if(timeDifference < 28800) {
 			const nextSession = sessions.find(session => session.dateTime.getTime() / 1000 === earliestTime)!;
 			
 			const server = this.client.guilds.cache.get(serverConfig.serverId);
@@ -111,7 +155,7 @@ export class SessionPoller {
 				this.logger.error(`Failed to update reminder at stage ${yellow(nextSession.reminderStage)}.`);
 				this.logger.error(formatUnwrappedError(unwrapError(error)));
 			}
-		}
+		}*/
 
 	}
 }
