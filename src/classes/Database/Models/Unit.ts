@@ -6,6 +6,7 @@ export class Unit extends Model<InferAttributes<Unit>, InferCreationAttributes<U
 	declare updatedAt: CreationOptional<Date>;
 
 	declare serverId: string;
+	declare name: string;
 	declare length: number;
 
 	static initModel(sequelize: Sequelize): typeof Unit {
@@ -24,6 +25,10 @@ export class Unit extends Model<InferAttributes<Unit>, InferCreationAttributes<U
 			},
 
 			serverId: {
+				type: DataTypes.TEXT,
+				allowNull: false
+			},
+			name: {
 				type: DataTypes.TEXT,
 				allowNull: false
 			},

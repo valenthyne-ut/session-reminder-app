@@ -7,7 +7,7 @@ export function NoConfig(fromSessionCommand: boolean = false) {
 		.setDescription(
 			"This server hasn't set a reminder configuration." + 
 			(fromSessionCommand ? 
-				" Please set one before using session commands." : 
+				" Please set one before using this app's commands." : 
 				"")
 		);
 }
