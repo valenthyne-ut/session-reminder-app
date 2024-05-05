@@ -5,7 +5,7 @@ import { logger } from "../../classes/Logger";
 import { GuildChatInputCommandInteraction } from "../../types/ExtendedTypes";
 import { confirmPrompt } from "../../userinterface/General/PromiseFunctions";
 import { NoConfig } from "../../userinterface/Reminders/Embeds";
-import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
+import { CreateCancel, CreateError, CreateInTimeframePrompt, CreatePastError, CreateSameTimeError, CreateSuccess, DateTimeFormatError } from "../../userinterface/Session/Embeds";
 import { formatUnwrappedError, unwrapError } from "../../util/Errors";
 import { DATETIME_DISPLAY_FORMAT, DATETIME_PARSE_FORMAT } from "../session";
 
@@ -62,12 +62,17 @@ export async function execute(interaction: GuildChatInputCommandInteraction) {
 		};
 
 		if(hasSessionInTimeframe) {
-			await interaction.editReply({ embeds: [ CreateInTimeframePrompt() ] });
-			const result = await confirmPrompt(interaction);
-			if(result) {
-				await createSession();
+			const hasSessionInTime = guildSessions.find(session => session.dateTime.getTime() == date.getTime());
+			if(hasSessionInTime !== undefined) {
+				await interaction.editReply({ embeds: [ CreateSameTimeError() ] });
 			} else {
-				await interaction.editReply({ embeds: [ CreateCancel() ] });
+				await interaction.editReply({ embeds: [ CreateInTimeframePrompt() ] });
+				const result = await confirmPrompt(interaction);
+				if(result) {
+					await createSession();
+				} else {
+					await interaction.editReply({ embeds: [ CreateCancel() ] });
+				}
 			}
 		} else {
 			await createSession();
