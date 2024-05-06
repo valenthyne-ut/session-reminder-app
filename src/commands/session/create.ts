@@ -15,7 +15,7 @@ export const data = new SlashCommandSubcommandBuilder()
 	.addStringOption(option =>
 		option
 			.setName("date-time")
-			.setDescription("The date and time the session will start.")
+			.setDescription("The date and time the session will start. Format: (DD-MM-YYYY HH:mm)")
 			.setRequired(true))
 	.addIntegerOption(option =>
 		option

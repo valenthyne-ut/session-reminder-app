@@ -57,7 +57,7 @@ export class SessionPoller {
 
 	public async sendReminders(serverId: string) {
 		const serverConfigs = await ServerReminderConfig.findAll();
-		const serverConfig = serverConfigs.find(info => info.serverId = serverId);;
+		const serverConfig = serverConfigs.find(info => info.serverId == serverId);;
 		if(!serverConfig) { return; }
 
 		const sessions = this.serverSessionMap.get(serverId);
@@ -120,42 +120,5 @@ export class SessionPoller {
 				this.logger.error(formatUnwrappedError(unwrapError(error)));
 			}
 		}
-
-		/*if(timeDifference < 28800) {
-			const nextSession = sessions.find(session => session.dateTime.getTime() / 1000 === earliestTime)!;
-			
-			const server = this.client.guilds.cache.get(serverConfig.serverId);
-			if(!server) { return; }
-
-			const reminderChannel = server.channels.cache.get(serverConfig.channelId) as TextChannel | undefined;
-			if(!reminderChannel) { return; }
-
-			try {
-				switch(nextSession.reminderStage as 0 | 1) {
-				case 0: {
-					await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionReminder(0, selectedUnit, timeDifference, nextSession.dateTime.getTime() / 1000) ] });
-					await nextSession.update({ reminderStage: 1 });
-					break; }
-				case 1: {
-					if(earliestTime - curTime < 600) {
-						await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`,embeds: [ SessionReminder(1, selectedUnit, timeDifference, nextSession.dateTime.getTime() / 1000) ] });
-						await nextSession.update({ reminderStage: 2 });
-						
-						setTimeout(() => {
-							void (async () => {
-								await nextSession.destroy();
-								await reminderChannel.send({ content: `<@&${serverConfig.roleId}>`, embeds: [ SessionStarting() ] });
-							})();
-						}, timeDifference * 1000);
-					}
-					break; }
-				}
-			}
-			catch(error) {
-				this.logger.error(`Failed to update reminder at stage ${yellow(nextSession.reminderStage)}.`);
-				this.logger.error(formatUnwrappedError(unwrapError(error)));
-			}
-		}*/
-
 	}
 }
