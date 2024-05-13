@@ -27,13 +27,17 @@ export class SessionPoller {
 		}, POLLING_INTERVAL);
 	}
 
-	public async poll() {
+	public async poll(overrideServerId?: string) {
 		const sessions = await Session.findAll();
 		if(sessions.length == 0) { return; };
 
 		this.updateMap(sessions);
-		for(const serverId of this.serverSessionMap.keys()) {
-			await this.sendReminders(serverId);
+		if(overrideServerId) {
+			await this.sendReminders(overrideServerId, true);
+		} else {
+			for(const serverId of this.serverSessionMap.keys()) {
+				await this.sendReminders(serverId);
+			}
 		}
 	}
 
@@ -55,7 +59,7 @@ export class SessionPoller {
 		this.serverSessionMap = newMap;
 	}
 
-	public async sendReminders(serverId: string) {
+	public async sendReminders(serverId: string, reminderOverride?: true) {
 		const serverConfigs = await ServerReminderConfig.findAll();
 		const serverConfig = serverConfigs.find(info => info.serverId == serverId);;
 		if(!serverConfig) { return; }
@@ -74,7 +78,6 @@ export class SessionPoller {
 		}
 
 		const curTime = new Date().getTime() / 1000;
-		const sessionsInTimeFrame = sessions.filter(session => session.dateTime.getTime() / 1000 - curTime < 28800);
 
 		const server = this.client.guilds.cache.get(serverConfig.serverId);
 		if(!server) { return; }
@@ -82,38 +85,47 @@ export class SessionPoller {
 		const reminderChannel = server.channels.cache.get(serverConfig.channelId) as TextChannel | undefined;
 		if(!reminderChannel) { return; }
 
+		const sessionsInTimeFrame = reminderOverride ? sessions : sessions.filter(session => session.dateTime.getTime() / 1000 - curTime < 28800);
+
 		for(const session of sessionsInTimeFrame) {
 			const { dateTime, reminderStage } = session;
 			const sessionDateTime = dateTime.getTime() / 1000;
 			const timeDifference = sessionDateTime - curTime;
 			try {
-				switch(reminderStage) {
-				case 0: {
+				if(reminderOverride) {
 					await reminderChannel.send({ 
 						content: `<@&${serverConfig.roleId}>`,
 						embeds: [ SessionReminder(0, selectedUnit, timeDifference, sessionDateTime) ] 
 					});
-					await session.update({ reminderStage: 1 });
-					break; }
-				case 1: {
-					if(timeDifference < 600) {
+				} else {
+					switch(reminderStage) {
+					case 0: {
 						await reminderChannel.send({ 
 							content: `<@&${serverConfig.roleId}>`,
-							embeds: [ SessionReminder(1, selectedUnit, timeDifference, sessionDateTime) ] 
+							embeds: [ SessionReminder(0, selectedUnit, timeDifference, sessionDateTime) ] 
 						});
-						await session.update({ reminderStage: 2 });
-						
-						setTimeout(() => {
-							void (async () => {
-								await session.destroy();
-								await reminderChannel.send({ 
-									content: `<@&${serverConfig.roleId}>`, 
-									embeds: [ SessionStarting() ] 
-								});
-							})();
-						}, timeDifference * 1000);
+						await session.update({ reminderStage: 1 });
+						break; }
+					case 1: {
+						if(timeDifference < 600) {
+							await reminderChannel.send({ 
+								content: `<@&${serverConfig.roleId}>`,
+								embeds: [ SessionReminder(1, selectedUnit, timeDifference, sessionDateTime) ] 
+							});
+							await session.update({ reminderStage: 2 });
+							
+							setTimeout(() => {
+								void (async () => {
+									await session.destroy();
+									await reminderChannel.send({ 
+										content: `<@&${serverConfig.roleId}>`, 
+										embeds: [ SessionStarting() ] 
+									});
+								})();
+							}, timeDifference * 1000);
+						}
+						break; }
 					}
-					break; }
 				}
 			} catch(error) {
 				this.logger.error(`Failed to update reminder at stage ${yellow(reminderStage)}.`);

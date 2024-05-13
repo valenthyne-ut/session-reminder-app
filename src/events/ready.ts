@@ -14,5 +14,6 @@ export function listener(client: Client) {
 		void new CommandDeployer(client as ExtendedClient).deployCommands();
 	}
 
-	new SessionPoller(client as ExtendedClient);
+	const extendedClient = client as ExtendedClient;
+	extendedClient.sessionPoller = new SessionPoller(extendedClient);
 }
